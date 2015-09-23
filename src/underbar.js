@@ -178,7 +178,7 @@
 
     _.each(collection, function (item) {
       accumulator = iterator(accumulator, item);
-    })
+    });
 
     return accumulator;
   };
@@ -199,12 +199,30 @@
   // Determine whether all of the elements match a truth test.
   _.every = function(collection, iterator) {
     // TIP: Try re-using reduce() here.
+    return _.reduce(collection, function(didPass, item) {
+      if (!didPass) {
+        return false;
+      }
+      if (typeof iterator !== 'function') {
+        return Boolean(item);
+      } else {
+        return Boolean(iterator(item));
+      }
+    }, true);
   };
 
   // Determine whether any of the elements pass a truth test. If no iterator is
   // provided, provide a default one
   _.some = function(collection, iterator) {
     // TIP: There's a very clever way to re-use every() here.
+    if (typeof iterator !== 'function') { iterator = _.identity; }
+
+    return _.reduce(collection, function(wasFound, item) {
+      if (wasFound) {
+        return true;
+      }
+      return Boolean(iterator(item));
+    }, false);
   };
 
 
@@ -227,11 +245,29 @@
   //     bla: "even more stuff"
   //   }); // obj1 now contains key1, key2, key3 and bla
   _.extend = function(obj) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    _.each(args, function(object) {
+      _.each(object, function(value, key) {
+        obj[key] = value;
+      });
+    });
+
+    return obj;
   };
 
   // Like extend, but doesn't ever overwrite a key that already
   // exists in obj
   _.defaults = function(obj) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    _.each(args, function(object) {
+      _.each(object, function(value, key) {
+        if (obj[key] === undefined) { obj[key] = value; }
+      });
+    });
+
+    return obj;
   };
 
 
@@ -275,6 +311,30 @@
   // already computed the result for the given argument and return that value
   // instead if possible.
   _.memoize = function(func) {
+    var argumentList = [];
+    var results = [];
+
+    return function() {
+      var index = function(arr1, arr) {
+        var strArr = JSON.stringify(arr);
+        for (var x=0; x<arr1.length; x++) {
+          if (JSON.stringify(arr1[x]) === strArr) {
+            return x;
+          }
+        }
+        return -1;
+      };
+      var result, argsArr = Array.prototype.slice.call(arguments);
+      var index = index(argumentList, argsArr)
+      if (index === -1) {
+        result = func.apply(this, arguments);
+        argumentList.push(argsArr);
+        results.push(result);
+        return result;
+      } else {
+        return results[index];
+      }
+    };
   };
 
   // Delays a function for the given number of milliseconds, and then calls
@@ -284,6 +344,9 @@
   // parameter. For example _.delay(someFunction, 500, 'a', 'b') will
   // call someFunction('a', 'b') after 500ms
   _.delay = function(func, wait) {
+    var argsArr = Array.prototype.slice.call(arguments, 2);
+
+    setTimeout(function(){ func.apply(null, argsArr) }, wait);
   };
 
 
@@ -297,7 +360,23 @@
   // TIP: This function's test suite will ask that you not modify the original
   // input array. For a tip on how to make a copy of an array, see:
   // http://mdn.io/Array.prototype.slice
-  _.shuffle = function(array) {
+  _.shuffle = function(collection) {
+    var ret = new Array(collection.length);
+
+    _.each(collection, function (item) {
+      iterate();
+      function iterate () {
+        var index = Math.floor(Math.random() * (collection.length));
+        if (typeof ret[index] === 'undefined') {
+          ret[index] = item;
+        }
+        else {
+          iterate();
+        }
+      }
+    })
+
+    return ret;
   };
 
 
@@ -307,11 +386,20 @@
    *
    * Note: This is the end of the pre-course curriculum. Feel free to continue,
    * but nothing beyond here is required.
+   * but nothing beyond here is required.
    */
 
   // Calls the method named by functionOrKey on each value in the list.
   // Note: You will need to learn a bit about .apply to complete this.
   _.invoke = function(collection, functionOrKey, args) {
+    var functionOrKey = functionOrKey, args = args;
+    return _.map(collection, function (item) {
+      if (typeof functionOrKey === 'string') {
+        return item[functionOrKey](args);
+      } else if (typeof functionOrKey === 'function') {
+        return functionOrKey.apply(item, args);
+      }
+    });
   };
 
   // Sort the object's values by a criterion produced by an iterator.
@@ -333,7 +421,18 @@
   // The new array should contain all elements of the multidimensional array.
   //
   // Hint: Use Array.isArray to check if something is an array
-  _.flatten = function(nestedArray, result) {
+  _.flatten = function(collection, ret) {
+    if (typeof ret === 'undefined') { ret = []; }
+
+    _.each(collection, function(item) {
+      if (Array.isArray(item)) {
+        _.flatten(item, ret);
+      } else {
+        ret.push(item);
+      }
+    });
+
+    return ret;
   };
 
   // Takes an arbitrary number of arrays and produces an array that contains
